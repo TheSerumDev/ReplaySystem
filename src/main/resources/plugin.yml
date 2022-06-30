@@ -1,0 +1,4 @@
+name: ReplaySystem
+version: '${project.version}'
+main: me.tim.replaysystem.ReplaySystem
+authors: [ SirupDev ]
