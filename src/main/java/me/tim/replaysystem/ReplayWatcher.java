@@ -10,10 +10,6 @@ public final class ReplayWatcher extends BukkitRunnable {
 
     @Override
     public void run() {
-        if (!this.replayManager.isRecording()) {
-            return;
-        }
-
         Replay replay = this.replayManager.getReplay();
 
         if (replay != null && this.replayManager.isRecording()) {
