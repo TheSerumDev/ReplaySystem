@@ -1,4 +1,7 @@
 name: ReplaySystem
 version: '${project.version}'
-main: me.tim.replaysystem.ReplaySystem
+main: me.tim.replaysystem.ReplaySystemPlugin
 authors: [ SirupDev ]
+
+commands:
+  replay: { }

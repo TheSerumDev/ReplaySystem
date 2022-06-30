@@ -9,10 +9,7 @@ public final class ReplaySystemPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         this.replayManager = new ReplayManager(this);
-
-        if (this.replayManager != null) {
-            this.replayManager.onEnable();
-        }
+        this.replayManager.onEnable();
     }
 
     @Override
