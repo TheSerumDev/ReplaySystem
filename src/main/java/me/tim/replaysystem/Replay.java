@@ -1,10 +1,12 @@
 package me.tim.replaysystem;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import lombok.Getter;
 import me.tim.replaysystem.recordables.EntityState;
 import me.tim.replaysystem.recordables.RecEntityMove;
@@ -17,6 +19,8 @@ import org.bukkit.entity.Player;
 @Getter
 public final class Replay {
 
+    private static final long HEAP_WIPER_TIMEOUT = 10_000;
+
     private final String world;
     private final String id;
 
@@ -26,60 +30,48 @@ public final class Replay {
     public Replay(String world, String id) {
         this.world = world;
         this.id = id;
-        this.data = new HashMap<>();
+        this.data = new ConcurrentHashMap<>();
+
     }
 
     public void addEntityState(EntityState entityState) {
+        this.data.computeIfAbsent(this.tick, x -> new CopyOnWriteArrayList<>());
         this.data.get(this.tick).add(entityState);
     }
 
     public void newTick() {
         this.tick++;
-        this.data.put(tick, new ArrayList<>());
+        this.data.put(tick, new CopyOnWriteArrayList<>());
+    }
 
-        if (this.tick % 10 == 0) {
-            int min = this.tick / 20 / 60;
-            int sec = (this.tick - (min * 20 * 60)) / 20;
-            String secStr = ("" + sec).length() == 1 ? "0" + sec : "" + sec;
+    public void saveTick(int tick, DataOutputStream dos) throws IOException  {
+        List<EntityState> records = this.data.get(tick);
 
-            double bits = 0;
-            bits += 798;
-            bits /= 1000;
-
-            double cm = 100 - bits + Math.random() - 3.25;
-            cm *= 100;
-            cm = Math.floor(cm);
-            cm /= 100.0;
-
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                if (!player.isOp()) {
-                    continue;
-                }
-
-                PlayerUtil.sendActionBar(player, "§cAufnahme " + min + "§7:§c" + secStr + " §8| §7Bitrate: " + bits + " KiB/s §8| §7Cmp: " + cm + "%");
-            }
+        for (EntityState entityState : records) {
+            dos.writeUTF(entityState.getId() + ":");
+            entityState.write(dos);
         }
-
-        Bukkit.broadcastMessage("Current tick: " + this.tick);
     }
 
     public void onStart() {
-        this.data.put(0, new ArrayList<>());
+        this.data.put(0, new CopyOnWriteArrayList<>());
+        newTick();
 
         for (Player player : Bukkit.getOnlinePlayers()) {
             RecordableHandler.spawn(this, player);
-            RecordableHandler.move(this, player, player.getLocation());
+            RecordableHandler.move(this, player.getEntityId(), player.getLocation());
         }
 
         Bukkit.broadcastMessage("Replay " + this.id + " started! watching world \"" + this.world + "\"");
+    }
+
+    public void onTick() {
     }
 
     public void onStop() {
         for (int i = 0; i < 100; i++) {
             Bukkit.broadcastMessage("");
         }
-
-        Bukkit.broadcastMessage("Replay stopped! " + this.id);
 
         for (Entry<Integer, List<EntityState>> entry : this.data.entrySet()) {
             Integer savedTick = entry.getKey();
@@ -104,5 +96,9 @@ public final class Replay {
                 }
             }
         }
+
+        this.data.clear();
+
+        Bukkit.broadcastMessage("Replay stopped! " + this.id);
     }
 }

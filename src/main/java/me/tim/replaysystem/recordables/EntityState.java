@@ -1,14 +1,10 @@
 package me.tim.replaysystem.recordables;
 
-import me.tim.replaysystem.Replay;
+import java.io.DataOutputStream;
+import java.io.IOException;
 
 public interface EntityState {
+    void write(DataOutputStream buffer) throws IOException;
 
-    default void add(Replay replay) {
-        if (replay == null) {
-            return;
-        }
-
-        replay.addEntityState(this);
-    }
+    int getId();
 }

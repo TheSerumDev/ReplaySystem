@@ -32,6 +32,12 @@ public final class ReplayCommand implements CommandExecutor {
             this.replayManager.stopRecording();
         }
 
+        if (args.length == 2 && args[0].equalsIgnoreCase("play")) {
+            this.replayManager.loadReplay(args[1], replay -> {
+
+            });
+        }
+
         return true;
     }
 }
