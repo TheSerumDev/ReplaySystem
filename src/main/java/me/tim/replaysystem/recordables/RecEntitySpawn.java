@@ -1,25 +1,43 @@
 package me.tim.replaysystem.recordables;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+
+import lombok.*;
 
 @RequiredArgsConstructor
+@NoArgsConstructor
 @Getter
+@ToString
 public class RecEntitySpawn implements EntityState {
 
-    private final int entityId;
-    private final String name;
-    private final String signature;
-    private final String texture;
+    @NonNull
+    private int entityId;
+
+    @NonNull
+    private String name;
+
+    @NonNull
+    private String signature;
+
+    @NonNull
+    private String texture;
 
     @Override
     public void write(DataOutputStream buffer) throws IOException {
         buffer.writeInt(this.entityId);
-        buffer.writeChars(this.name);
-        buffer.writeChars(this.signature);
-        buffer.writeChars(this.texture);
+        buffer.writeUTF(this.name);
+        buffer.writeUTF(this.signature);
+        buffer.writeUTF(this.texture);
+    }
+
+    @Override
+    public void read(DataInputStream buffer) throws IOException {
+        this.entityId = buffer.readInt();
+        this.name = buffer.readUTF();
+        this.signature = buffer.readUTF();
+        this.texture = buffer.readUTF();
     }
 
     @Override
