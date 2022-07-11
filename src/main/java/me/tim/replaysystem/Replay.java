@@ -48,6 +48,7 @@ public final class Replay {
         List<EntityState> records = this.data.get(tick);
 
         for (EntityState entityState : records) {
+            System.out.println("WRITE: " + entityState);
             dos.writeUTF(entityState.getId() + ":");
             entityState.write(dos);
         }
