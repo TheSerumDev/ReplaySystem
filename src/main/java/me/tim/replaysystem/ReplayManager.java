@@ -15,6 +15,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import me.tim.replaysystem.dispatcher.EventDispatcher;
 import me.tim.replaysystem.dispatcher.TickDispatcher;
+import me.tim.replaysystem.recordables.EntityState;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -80,9 +81,13 @@ public final class ReplayManager {
 
                 try (FileInputStream fis = new FileInputStream(file)) {
                     DataInputStream dis = new DataInputStream(fis);
-                    ByteBuffer buffer = ByteBuffer.allocate(dis.available());
 
-                    
+                    while (dis.available() > 0) {
+                        int entityStateId = Integer.parseInt(dis.readUTF().replace(":", ""));
+                        EntityState entityState = EntityState.createEmptyStateById(entityStateId);
+                        entityState.read(dis);
+                        System.out.println("READ: " + entityState);
+                    }
                 } catch (Exception ex) {
                     broadcast("Error whilst loading replay: " + id + " err.");
                     ex.printStackTrace();
