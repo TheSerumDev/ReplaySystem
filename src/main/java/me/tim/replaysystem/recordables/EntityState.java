@@ -4,15 +4,19 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import me.tim.replaysystem.session.ReplaySession;
 
 public interface EntityState {
     void write(DataOutputStream buffer) throws IOException;
 
     void read(DataInputStream buffer) throws IOException;
 
+    default void play(ReplaySession session) {
+    }
+
     int getId();
 
-    Class<?>[] STATE_CLASSES = {
+    static Class<?>[] STATE_CLASSES = {
             RecEntityMove.class,
             RecEntitySneaking.class,
             RecEntitySpawn.class
@@ -26,8 +30,8 @@ public interface EntityState {
                     return entityState;
                 }
             } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
-                     NoSuchMethodException e) {
-                throw new RuntimeException(e);
+                     NoSuchMethodException ex) {
+                throw new RuntimeException(ex);
             }
         }
 

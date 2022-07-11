@@ -6,7 +6,6 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.nio.ByteBuffer;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -16,7 +15,9 @@ import lombok.RequiredArgsConstructor;
 import me.tim.replaysystem.dispatcher.EventDispatcher;
 import me.tim.replaysystem.dispatcher.TickDispatcher;
 import me.tim.replaysystem.recordables.EntityState;
+import me.tim.replaysystem.session.ReplaySessionTask;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
 @RequiredArgsConstructor
@@ -29,11 +30,12 @@ public final class ReplayManager {
 
     private boolean recording;
 
-    private Replay replay;
+    private Replay currentReplay;
 
     public void onEnable() {
         getPlugin().getCommand("replay").setExecutor(new ReplayCommand(this));
         new TickDispatcher(this).runTaskTimer(this.plugin, 1, 1);
+        new ReplaySessionTask(this).runTaskTimer(this.plugin, 1, 1);
 
         Bukkit.getPluginManager().registerEvents(new EventDispatcher(this), this.plugin);
     }
@@ -44,55 +46,65 @@ public final class ReplayManager {
 
     public void startRecording(String world) {
         this.recording = true;
-        this.replay = new Replay(world, UUID.randomUUID().toString());
-        this.replay.onStart();
+        this.currentReplay = new Replay(world, UUID.randomUUID().toString());
+        this.currentReplay.onStart();
     }
 
     public void stopRecording() {
-        if (this.replay == null || !this.recording) {
+        if (this.currentReplay == null || !this.recording) {
             return;
         }
 
-        try (FileOutputStream fos = new FileOutputStream(getFile(this.replay.getId()));
+        try (FileOutputStream fos = new FileOutputStream(getFile(this.currentReplay.getId()));
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             DataOutputStream dos = new DataOutputStream(baos)
         ) {
-            for (int i = 0; i < this.replay.getTick(); i++) {
-                this.replay.saveTick(i, dos);
+            dos.writeInt(this.currentReplay.getTick());
+            for (int i = 0; i < this.currentReplay.getTick(); i++) {
+                this.currentReplay.saveTick(i, dos);
             }
 
             fos.write(baos.toByteArray());
             fos.flush();
 
-            this.replay.onStop();
+            this.currentReplay.onStop();
         } catch (Exception ex) {
         }
 
-        this.replay = null;
+        this.currentReplay = null;
 
         this.recording = false;
     }
 
     public void loadReplay(String id, Consumer<Replay> consumer) {
+        Replay replay = new Replay("", id);
+
         POOL.execute(new Acceptor<Replay>(consumer) {
             @Override
             public Replay getValue() {
                 File file = getFile(id);
 
+                if (!file.exists()) {
+                    return null;
+                }
+
                 try (FileInputStream fis = new FileInputStream(file)) {
                     DataInputStream dis = new DataInputStream(fis);
+                    replay.setTick(dis.readInt());
 
                     while (dis.available() > 0) {
                         int entityStateId = Integer.parseInt(dis.readUTF().replace(":", ""));
                         EntityState entityState = EntityState.createEmptyStateById(entityStateId);
                         entityState.read(dis);
+                        replay.addEntityState(entityState);
                         System.out.println("READ: " + entityState);
                     }
+                    return replay;
                 } catch (Exception ex) {
                     broadcast("Error whilst loading replay: " + id + " err.");
                     ex.printStackTrace();
+                    return null;
                 }
-                return null;
             }
         });
     }

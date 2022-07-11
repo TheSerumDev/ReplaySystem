@@ -3,25 +3,23 @@ package me.tim.replaysystem.recordables;
 import com.mojang.authlib.properties.Property;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.experimental.UtilityClass;
+import me.tim.replaysystem.LocationWrapper;
 import me.tim.replaysystem.Replay;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 
 @UtilityClass
 public final class RecordableHandler {
 
-    public int getBytes(EntityState entityState) {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            DataOutputStream dos = new DataOutputStream(baos)) {
-            entityState.write(dos);
-
-            return baos.size();
-        } catch (Exception ex) {
-            return 1;
-        }
-    }
+    private static final Map<Entity, LocationWrapper> ENTITY_LOCATION = new HashMap<>();
 
     public void add(Replay replay, EntityState entityState) {
         if (replay == null) {
@@ -40,13 +38,43 @@ public final class RecordableHandler {
         }
 
         add(replay, new RecEntitySpawn(player.getEntityId(), player.getName(), prop == null ? "" : prop.getSignature(), prop == null ? "" : prop.getValue()));
+        trackEntity(replay, player);
     }
 
-    public void move(Replay replay, int entityId, Location loc) {
+    public void trackEntity(Replay replay, Entity entity) {
+        if (entity instanceof Item) {
+            Item item = (Item) entity;
+        } else {
+        }
+
+        RecordableHandler.moveEntity(replay, entity.getEntityId(), entity.getLocation());
+        setEntityLocation(entity, new LocationWrapper(entity.getLocation()));
+    }
+
+    public void moveEntity(Replay replay, int entityId, Location loc) {
         add(replay, new RecEntityMove(entityId, loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch()));
     }
 
     public void sneak(Replay replay, int entityId, boolean isSneaking) {
         add(replay, new RecEntitySneaking(entityId, isSneaking));
+    }
+
+    public int getBytes(EntityState entityState) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            DataOutputStream dos = new DataOutputStream(baos)) {
+            entityState.write(dos);
+
+            return baos.size();
+        } catch (Exception ex) {
+            return 1;
+        }
+    }
+
+    public static Map<Entity, LocationWrapper> getEntityLocation() {
+        return Collections.unmodifiableMap(ENTITY_LOCATION);
+    }
+
+    public static void setEntityLocation(Entity entity, LocationWrapper lw) {
+        ENTITY_LOCATION.put(entity, lw);
     }
 }

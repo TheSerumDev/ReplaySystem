@@ -8,12 +8,14 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import lombok.Getter;
+import lombok.Setter;
 import me.tim.replaysystem.recordables.EntityState;
 import me.tim.replaysystem.recordables.RecEntityMove;
 import me.tim.replaysystem.recordables.RecEntitySneaking;
 import me.tim.replaysystem.recordables.RecEntitySpawn;
 import me.tim.replaysystem.recordables.RecordableHandler;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
 @Getter
@@ -24,27 +26,34 @@ public final class Replay {
     private final String world;
     private final String id;
 
+    @Setter
     private int tick;
     private final Map<Integer, List<EntityState>> data;
+
+    private final long start;
 
     public Replay(String world, String id) {
         this.world = world;
         this.id = id;
         this.data = new ConcurrentHashMap<>();
+        this.start = System.currentTimeMillis();
+    }
 
+    public void addEntityState(int tick, EntityState entityState) {
+        this.data.computeIfAbsent(tick, x -> new CopyOnWriteArrayList<>());
+        this.data.get(tick).add(entityState);
     }
 
     public void addEntityState(EntityState entityState) {
-        this.data.computeIfAbsent(this.tick, x -> new CopyOnWriteArrayList<>());
-        this.data.get(this.tick).add(entityState);
+        addEntityState(this.tick, entityState);
     }
 
-    public void newTick() {
+    public void nextTick() {
         this.tick++;
         this.data.put(tick, new CopyOnWriteArrayList<>());
     }
 
-    public void saveTick(int tick, DataOutputStream dos) throws IOException  {
+    public void saveTick(int tick, DataOutputStream dos) throws IOException {
         List<EntityState> records = this.data.get(tick);
 
         for (EntityState entityState : records) {
@@ -56,17 +65,35 @@ public final class Replay {
 
     public void onStart() {
         this.data.put(0, new CopyOnWriteArrayList<>());
-        newTick();
+        nextTick();
 
         for (Player player : Bukkit.getOnlinePlayers()) {
             RecordableHandler.spawn(this, player);
-            RecordableHandler.move(this, player.getEntityId(), player.getLocation());
+        }
+
+        for (Entity entity : Bukkit.getWorld(this.world).getEntities()) {
+            RecordableHandler.trackEntity(this, entity);
         }
 
         Bukkit.broadcastMessage("Replay " + this.id + " started! watching world \"" + this.world + "\"");
     }
 
     public void onTick() {
+        for (Entry<Entity, LocationWrapper> entry : RecordableHandler.getEntityLocation().entrySet()) {
+            Entity entity = entry.getKey();
+
+            if (!entity.isValid()) {
+                // remove entity
+            }
+
+            LocationWrapper to = new LocationWrapper(entity.getLocation());
+            LocationWrapper from = entry.getValue();
+
+            if (!to.compare(from)) {
+                RecordableHandler.setEntityLocation(entity, to);
+                RecordableHandler.moveEntity(this, entity.getEntityId(), entity.getLocation());
+            }
+        }
     }
 
     public void onStop() {

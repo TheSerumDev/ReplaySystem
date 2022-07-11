@@ -14,12 +14,12 @@ public final class TickDispatcher extends BukkitRunnable {
 
     @Override
     public void run() {
-        Replay replay = this.replayManager.getReplay();
+        Replay replay = this.replayManager.getCurrentReplay();
 
         if (this.replayManager.isRecording() && replay != null) {
             this.ticks++;
 
-            replay.newTick();
+            replay.nextTick();
             replay.onTick();
         }
     }
