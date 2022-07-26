@@ -8,11 +8,8 @@ import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
+import me.tim.replaysystem.session.ReplayPlayer;
 import me.tim.replaysystem.session.ReplaySession;
-import net.minecraft.server.v1_8_R3.EntityPlayer;
-import net.minecraft.server.v1_8_R3.PacketPlayOutEntity.PacketPlayOutEntityLook;
-import net.minecraft.server.v1_8_R3.PacketPlayOutEntityHeadRotation;
-import net.minecraft.server.v1_8_R3.PacketPlayOutEntityTeleport;
 import org.bukkit.Location;
 import org.bukkit.World;
 
@@ -62,23 +59,13 @@ public class RecEntityMove implements EntityState {
 
     @Override
     public void play(ReplaySession session) {
-        EntityPlayer entity = session.getEntity(this.entityId);
+        ReplayPlayer player = session.getPlayer(this.entityId);
 
-        if (entity == null) {
+        if (player == null) {
             return;
         }
 
-        if (!session.isForward()) {
-            entity.locX = this.x;
-            entity.locY = this.y;
-            entity.locZ = this.z;
-            entity.yaw = this.yaw;
-            entity.pitch = this.pitch;
-
-            session.packet(new PacketPlayOutEntityTeleport(entity));
-            session.packet(new PacketPlayOutEntityLook(entity.getId(), (byte) yaw, (byte) pitch, true));
-            session.packet(new PacketPlayOutEntityHeadRotation(entity, (byte) yaw));
-        }
+        player.move(getLocation(session.getWorld()));
     }
 
     @Override

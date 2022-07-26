@@ -1,11 +1,13 @@
 package me.tim.replaysystem.session;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
 import lombok.Setter;
 import me.tim.replaysystem.PlayerUtil;
@@ -18,6 +20,7 @@ import net.minecraft.server.v1_8_R3.EntityPlayer;
 import net.minecraft.server.v1_8_R3.Packet;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.World;
@@ -29,23 +32,21 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
+@Getter
 public final class ReplaySession {
 
     private final List<Player> watchers;
-    private final Map<Integer, EntityPlayer> entities;
+    private final Map<Integer, ReplayPlayer> players;
 
     private final Replay replay;
 
-    @Getter
     private final World world;
 
     private long lastHearbeat;
 
     @Setter
-    @Getter
     private boolean forward;
 
-    @Getter
     private int ticks;
 
     private boolean paused;
@@ -54,7 +55,7 @@ public final class ReplaySession {
     public ReplaySession(Replay replay) {
         this.replay = replay;
         this.watchers = new ArrayList<>();
-        this.entities = new HashMap<>();
+        this.players = new ConcurrentHashMap<>();
 
         this.speed = 1;
 
@@ -76,21 +77,8 @@ public final class ReplaySession {
 
         inventory.setItem(8, new ItemStack(Material.SLIME_BALL));
 
-        RecEntityMove rec = null;
-        for (Entry<Integer, List<EntityState>> entry : this.replay.getData().entrySet()) {
-            for (EntityState entityState : entry.getValue()) {
-                if (entityState instanceof RecEntityMove) {
-                    rec = (RecEntityMove) entityState;
-                    break;
-                }
-            }
-        }
-
-        if (rec != null) {
-            player.teleport(rec.getLocation(getWorld()));
-        } else {
-            player.teleport(getWorld().getSpawnLocation());
-        }
+        Location location = this.findFirstSpawn(getReplay(), getWorld()).orElseGet(() -> getWorld().getSpawnLocation());
+        player.teleport(location);
 
         player.sendMessage(replay.getTick() + " max len");
     }
@@ -114,6 +102,14 @@ public final class ReplaySession {
             leave(watcher);
         }
 
+        this.watchers.clear();
+
+        for (ReplayPlayer player : this.players.values()) {
+            player.destroy(this);
+        }
+
+        this.players.clear();
+
         ReplaySessionHolder.removeSession(this);
     }
 
@@ -133,32 +129,32 @@ public final class ReplaySession {
         this.watchers.remove(player);
     }
 
-    public EntityPlayer getEntity(int id) {
-        return this.entities.get(id);
+    public ReplayPlayer getPlayer(int id) {
+        return this.players.get(id);
     }
 
-    public Map<Integer, EntityPlayer> getEntities() {
-        return Collections.unmodifiableMap(this.entities);
+    public Map<Integer, ReplayPlayer> getPlayers() {
+        return Collections.unmodifiableMap(this.players);
     }
 
     public void addEntity(int entityId, EntityPlayer entity) {
-        if (isEntity(entityId)) {
+        if (isPlayer(entityId)) {
             return;
         }
 
-        this.entities.put(entityId, entity);
+        this.players.put(entityId, new ReplayPlayer(entity, this));
     }
 
     public void removeEntity(int entityId) {
-        if (!isEntity(entityId)) {
+        if (!isPlayer(entityId)) {
             return;
         }
 
-        this.entities.remove(entityId);
+        this.players.remove(entityId);
     }
 
-    public boolean isEntity(int id) {
-        return this.entities.containsKey(id);
+    public boolean isPlayer(int id) {
+        return this.players.containsKey(id);
     }
 
     public void revert() {
@@ -173,6 +169,8 @@ public final class ReplaySession {
         if (this.paused) {
             return;
         }
+
+        System.out.println(this.players.size());
 
         this.ticks += this.speed;
 
@@ -192,10 +190,6 @@ public final class ReplaySession {
                 PlayerUtil.sendActionBar(watcher, "§7Aufnahme vorbei");
             }
             cleanup();
-            return;
-        }
-
-        if (this.ticks % 1 != 0) {
             return;
         }
 
@@ -220,16 +214,24 @@ public final class ReplaySession {
         }
     }
 
+    public Optional<Location> findFirstSpawn(Replay replay, World world) {
+        return replay.getData().values().stream()
+            .flatMap(Collection::stream)
+            .filter(recEntity -> recEntity instanceof RecEntityMove)
+            .map(recEntity -> ((RecEntityMove) recEntity).getLocation(world))
+            .findFirst();
+    }
+
     public List<Player> getWatchers() {
         return Collections.unmodifiableList(this.watchers);
     }
 
-    public Player getWatcher(Player player) {
+    public Optional<Player> getWatcher(Player player) {
         for (Player watcher : this.watchers) {
             if (player == watcher) {
-                return watcher;
+                return Optional.ofNullable(watcher);
             }
         }
-        return null;
+        return Optional.empty();
     }
 }

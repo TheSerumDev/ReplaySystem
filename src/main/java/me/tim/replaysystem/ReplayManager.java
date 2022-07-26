@@ -15,9 +15,9 @@ import lombok.RequiredArgsConstructor;
 import me.tim.replaysystem.dispatcher.EventDispatcher;
 import me.tim.replaysystem.dispatcher.TickDispatcher;
 import me.tim.replaysystem.recordables.EntityState;
+import me.tim.replaysystem.recordables.EntityStateRegistry;
 import me.tim.replaysystem.session.ReplaySessionTask;
 import org.bukkit.Bukkit;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
 @RequiredArgsConstructor
@@ -94,7 +94,7 @@ public final class ReplayManager {
 
                     while (dis.available() > 0) {
                         int entityStateId = Integer.parseInt(dis.readUTF().replace(":", ""));
-                        EntityState entityState = EntityState.createEmptyStateById(entityStateId);
+                        EntityState entityState = EntityStateRegistry.createEmptyStateById(entityStateId);
                         entityState.read(dis);
                         replay.addEntityState(entityState);
                         System.out.println("READ: " + entityState);

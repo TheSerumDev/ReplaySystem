@@ -9,6 +9,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 
 public final class EventDispatcher implements Listener {
@@ -27,6 +28,16 @@ public final class EventDispatcher implements Listener {
 
         Player player = evt.getPlayer();
         RecordableHandler.spawn(this.replayManager.getCurrentReplay(), player);
+    }
+
+    @EventHandler
+    private void onPlayerQuit(PlayerQuitEvent evt) {
+        if (!replayManager.isRecording()) {
+            return;
+        }
+
+        Player player = evt.getPlayer();
+        RecordableHandler.remove(replayManager.getCurrentReplay(), player);
     }
 
     @EventHandler

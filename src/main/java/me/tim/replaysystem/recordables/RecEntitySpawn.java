@@ -60,7 +60,7 @@ public class RecEntitySpawn implements EntityState {
 
     @Override
     public void play(ReplaySession session) {
-        if (session.isEntity(this.entityId)) {
+        if (session.isPlayer(this.entityId)) {
             return;
         }
 

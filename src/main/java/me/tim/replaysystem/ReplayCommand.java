@@ -1,11 +1,9 @@
 package me.tim.replaysystem;
 
 import lombok.RequiredArgsConstructor;
+import me.tim.replaysystem.session.ReplayPlayer;
 import me.tim.replaysystem.session.ReplaySession;
 import me.tim.replaysystem.session.ReplaySessionHolder;
-import net.minecraft.server.v1_8_R3.EntityPlayer;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -63,15 +61,15 @@ public final class ReplayCommand implements CommandExecutor {
 
             int id = Integer.parseInt(args[1]);
 
-            if (!session.isEntity(id)) {
-                for (Integer entityId : session.getEntities().keySet()) {
+            if (!session.isPlayer(id)) {
+                for (Integer entityId : session.getPlayers().keySet()) {
                     player.sendMessage(entityId + "");
                 }
                 return false;
             }
 
-            EntityPlayer entity = session.getEntity(id);
-            player.teleport(new Location(session.getWorld(), entity.locX, entity.locY, entity.locZ, entity.yaw, entity.pitch));
+            ReplayPlayer replayPlayer = session.getPlayer(id);
+            player.teleport(replayPlayer.getLocation(session.getWorld()));
         }
 
         return true;

@@ -12,7 +12,6 @@ import me.tim.replaysystem.Replay;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 
@@ -41,6 +40,10 @@ public final class RecordableHandler {
         trackEntity(replay, player);
     }
 
+    public void remove(Replay replay, Player player) {
+        add(replay, new RecEntityDestroy(player.getEntityId()));
+    }
+
     public void trackEntity(Replay replay, Entity entity) {
         if (entity instanceof Item) {
             Item item = (Item) entity;
@@ -52,7 +55,9 @@ public final class RecordableHandler {
     }
 
     public void moveEntity(Replay replay, int entityId, Location loc) {
-        add(replay, new RecEntityMove(entityId, loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch()));
+        if (replay.getTick() % 20 == 0) {
+            add(replay, new RecEntityMove(entityId, loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch()));
+        }
     }
 
     public void sneak(Replay replay, int entityId, boolean isSneaking) {
